@@ -138,7 +138,7 @@ outputStr = mainReport(file1Entries) if len(file2Entries) == 0 else diffReport(f
 
 print(outputStr)
 
-output = open(filename1 + "_output", 'w')
+output = open(filename1 + "_output", 'w', encoding='utf-8')
 output.write(outputStr)
 output.close()
 
