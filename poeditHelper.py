@@ -1,6 +1,10 @@
 import sys
 import re
 
+strInQuotesExp = ".*?\\\"(.*?)\\\""
+msgIdToken = "msgid"
+msgStrToken = "msgstr"
+
 class Entry:
     def __init__(self):
         self.key = ""
@@ -17,7 +21,7 @@ def parseEntries(fileStr):
 
         if len(line) == 0 or line[0] == "~": continue
 
-        iskey1stLine = (line.find(msgIdToken) == 0)
+        iskey1stLine   = (line.find(msgIdToken)  == 0)
         istrans1stLine = (line.find(msgStrToken) == 0)
 
         if iskey1stLine: 
@@ -45,9 +49,7 @@ def parseEntries(fileStr):
 filename1 = sys.argv[1]
 filename2 = sys.argv[2] if len(sys.argv) > 2 else ""
 
-rQuotes = re.compile(".*?\\\"(.*?)\\\"")
-msgIdToken = "msgid"
-msgStrToken = "msgstr"
+rQuotes = re.compile(strInQuotesExp)
 
 file1 = open(filename1, 'r', encoding='utf8')
 file2 = None
@@ -60,8 +62,6 @@ file1Entries = parseEntries(file1Str)
 file2Entries = parseEntries(file2Str) if file2Str and len(file2Str) > 0 else []
 
 def mainReport(entries):
-    rusTranslatedLen = 0
-    rusNonTranslatedLen = 0
 
     translatedList = []
     nonTranslatedList = []
@@ -69,19 +69,12 @@ def mainReport(entries):
     for entry in file1Entries:
         (translatedList if len(entry.trans) > 0 else nonTranslatedList).append(entry)
 
-    rusTranslatedList = [entry.key for entry in translatedList]
-    rusNonTranslatedList = [entry.key for entry in nonTranslatedList]
+    allRusText =          ' '.join([entry.key   for entry in file1Entries])
+    allEngText =          ' '.join([entry.trans for entry in file1Entries])
+    translatedRusText =   ' '.join([entry.key   for entry in translatedList])
+    untranslatedRusText = ' '.join([entry.key   for entry in nonTranslatedList])
 
-    allRusTextList  = [entry.key for entry in file1Entries]
-    allEngTextList  = [entry.trans for entry in file1Entries]
-
-    allRusText = ' '.join(allRusTextList)
-    allEngText = ' '.join(allEngTextList)
-
-    translatedRusText = ' '.join(rusTranslatedList)
-    untranslatedRusText = ' '.join(rusNonTranslatedList)
-
-    rusTranslatedLen = len(translatedRusText)
+    rusTranslatedLen    = len(translatedRusText)
     rusNonTranslatedLen = len(untranslatedRusText)
 
     allRusLen = len(allRusText)
@@ -104,13 +97,9 @@ def mainReport(entries):
 def diffReport(entries1, entries2):
 
     dict1 = {}
-    dict2 = {}
 
     for entry in entries1:
         dict1[entry.key] = entry
-
-    for entry in entries2:
-        dict2[entry.key] = entry
 
     entriesThatDiffer = []
 
@@ -123,8 +112,7 @@ def diffReport(entries1, entries2):
         if corrEntry.trans != entry.trans:
             entriesThatDiffer.append(entry)
 
-    allDiffersRusTextList  = [entry.key for entry in entriesThatDiffer]
-    allDiffersRusText = ' '.join(allDiffersRusTextList)
+    allDiffersRusText = ' '.join([entry.key for entry in entriesThatDiffer])
     allDiffersRusTextLen = len(allDiffersRusText)
 
     outputStr = ""
@@ -143,4 +131,3 @@ output.write(outputStr)
 output.close()
 
 input("Press Enter to exit...")
-
