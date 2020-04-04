@@ -19,7 +19,8 @@ def parseEntries(fileStr):
 
     for line in file1Lines:
 
-        if len(line) == 0 or line[0] == "~": continue
+        if len(line) == 0 or line[0] == "#": 
+            continue
 
         iskey1stLine   = (line.find(msgIdToken)  == 0)
         istrans1stLine = (line.find(msgStrToken) == 0)
@@ -42,6 +43,8 @@ def parseEntries(fileStr):
                 entry.key = entry.key + strInQuotes
             else:
                 entry.trans = entry.trans + strInQuotes
+
+    if entry and len(entry.key) > 0: entries.append(entry)
 
     return entries
 
