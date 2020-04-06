@@ -1,6 +1,7 @@
 import sys
 import re
 
+strInTag = "\\<.*?\\>"
 strInQuotesExp = ".*?\\\"(.*?)\\\""
 msgIdToken = "msgid"
 msgStrToken = "msgstr"
@@ -38,6 +39,9 @@ def parseEntries(fileStr):
         m = rQuotes.match(line)
         strInQuotes = m.group(1) if m else ""
 
+        if removeTags:
+            strInQuotes = re.sub(strInTag, '', strInQuotes)
+
         if len(strInQuotes) > 0:
             if msgIdCapture:
                 entry.key = entry.key + strInQuotes
@@ -50,7 +54,15 @@ def parseEntries(fileStr):
 
 
 filename1 = sys.argv[1]
-filename2 = sys.argv[2] if len(sys.argv) > 2 else ""
+filename2 = None
+removeTags = True
+
+if len(sys.argv) > 2:
+    arg2 = sys.argv[2]
+    if arg2 == '-noremovetags':
+        removeTags = False
+    else:
+        filename2 = arg2
 
 rQuotes = re.compile(strInQuotesExp)
 
