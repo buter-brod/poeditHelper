@@ -1,21 +1,30 @@
 import sys
 import re
 
-strInTag = "\\<.*?\\>"
-strInQuotesExp = ".*?\\\"(.*?)\\\""
-msgIdToken = "msgid"
-msgStrToken = "msgstr"
+strInTag         = "\\<.*?\\>"
+strInQuotesExp   = ".*?\\\"(.*?)\\\""
+transPluralIdExp = "msgstr\[(\d)\].*"
+
+msgIdToken       = "msgid"
+msgIdPluralToken = "msgid_plural"
+msgStrToken      = "msgstr"
+
+rQuotes   = re.compile(strInQuotesExp)
+rPluralId = re.compile(transPluralIdExp)
 
 class Entry:
     def __init__(self):
         self.key = ""
-        self.trans = ""
+        self.pluralKey = ""
+        self.trans = {}
 
 def parseEntries(fileStr):
     
     entries = []
     entry = None
-    msgIdCapture = False
+    capture = ""
+    plural_ind = -1
+    
     file1Lines = fileStr.splitlines()
 
     for line in file1Lines:
@@ -23,33 +32,38 @@ def parseEntries(fileStr):
         if len(line) == 0 or line[0] == "#": 
             continue
 
-        iskey1stLine   = (line.find(msgIdToken)  == 0)
-        istrans1stLine = (line.find(msgStrToken) == 0)
+        iskey1stLine       = line.startswith(msgIdToken)
+        isPluralkey1stLine = line.startswith(msgIdPluralToken)
+        istrans1stLine     = line.startswith(msgStrToken)
 
-        if iskey1stLine: 
-        
-            if entry and len(entry.key) > 0 : entries.append(entry)
-        
-            entry = Entry()
-            msgIdCapture = True
-
-        elif istrans1stLine:
-            msgIdCapture = False
-
-        m = rQuotes.match(line)
-        strInQuotes = m.group(1) if m else ""
+        strInQuotes = ""
+        quotesMatch = rQuotes.match(line)
+        strInQuotes = quotesMatch.group(1) if quotesMatch else ""
 
         if removeTags:
             strInQuotes = re.sub(strInTag, '', strInQuotes)
 
-        if len(strInQuotes) > 0:
-            if msgIdCapture:
-                entry.key = entry.key + strInQuotes
-            else:
-                entry.trans = entry.trans + strInQuotes
+        if isPluralkey1stLine:
+            capture = "key_plural"
+        elif iskey1stLine:
+            # found a key of next entry - let's save current entry as complete
+            if entry and len(entry.key) > 0 : entries.append(entry)
+            entry = Entry()
+            capture = "key"
+        elif istrans1stLine:
+            capture = "trans"
 
+        if capture == "key_plural":
+            entry.pluralKey = entry.pluralKey + strInQuotes
+        elif capture == "key":
+            entry.key = entry.key + strInQuotes
+        elif capture == "trans" and len(entry.key) > 0:
+            pluralIdMatch = rPluralId.match(line)
+            plural_ind = int(pluralIdMatch.group(1)) if pluralIdMatch else 0
+            transStr = entry.trans[plural_ind] if plural_ind in entry.trans else ""
+            entry.trans[plural_ind] = transStr + strInQuotes
+        
     if entry and len(entry.key) > 0: entries.append(entry)
-
     return entries
 
 
@@ -64,7 +78,6 @@ if len(sys.argv) > 2:
     else:
         filename2 = arg2
 
-rQuotes = re.compile(strInQuotesExp)
 
 file1 = open(filename1, 'r', encoding='utf8')
 file2 = None
@@ -82,14 +95,20 @@ def mainReport(entries):
     nonTranslatedList = []
 
     for entry in file1Entries:
-        (translatedList if len(entry.trans) > 0 else nonTranslatedList).append(entry)
+        list = translatedList
+        for pluralInd, pluralStr in entry.trans.items():
+            if not pluralStr: 
+                list = nonTranslatedList
+                break
 
-    allRusText =          ' '.join([entry.key   for entry in file1Entries])
-    allEngText =          ' '.join([entry.trans for entry in file1Entries])
-    translatedRusText =   ' '.join([entry.key   for entry in translatedList])
-    untranslatedRusText = ' '.join([entry.key   for entry in nonTranslatedList])
+        list.append(entry)
 
-    rusTranslatedLen    = len(translatedRusText)
+    allRusText          = ' '.join([entry.key      for entry in file1Entries])
+    allEngText          = ' '.join([entry.trans[0] for entry in file1Entries])
+    translatedRusText   = ' '.join([entry.key      for entry in translatedList])
+    untranslatedRusText = ' '.join([entry.key      for entry in nonTranslatedList])
+
+    rusTranslatedLen = len(translatedRusText)
     rusNonTranslatedLen = len(untranslatedRusText)
 
     allRusLen = len(allRusText)
