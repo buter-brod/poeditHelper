@@ -27,9 +27,14 @@ def parseEntries(fileStr):
     
     file1Lines = fileStr.splitlines()
 
+    fuzzyFlag = False
+
     for line in file1Lines:
 
         if len(line) == 0 or line[0] == "#": 
+            if "#, fuzzy" in line:
+                fuzzyFlag = True
+
             continue
 
         iskey1stLine       = line.startswith(msgIdToken)
@@ -47,8 +52,13 @@ def parseEntries(fileStr):
             capture = "key_plural"
         elif iskey1stLine:
             # found a key of next entry - let's save current entry as complete
-            if entry and len(entry.key) > 0 : entries.append(entry)
+            if entry and len(entry.key) > 0 : 
+                if entry.fuzzy or not onlyFuzzy:               
+                    entries.append(entry)
+
             entry = Entry()
+            entry.fuzzy = fuzzyFlag
+            fuzzyFlag = False
             capture = "key"
         elif istrans1stLine:
             capture = "trans"
@@ -70,11 +80,14 @@ def parseEntries(fileStr):
 filename1 = sys.argv[1]
 filename2 = None
 removeTags = True
+onlyFuzzy = False
 
 if len(sys.argv) > 2:
     arg2 = sys.argv[2]
     if arg2 == '-noremovetags':
         removeTags = False
+    if arg2 == '-onlyfuzzy':
+        onlyFuzzy = True
     else:
         filename2 = arg2
 
